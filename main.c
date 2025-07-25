@@ -11,6 +11,8 @@
 #define PORT        8080
 #define MAX_CLIENTS 10
 
+#define DEBUG 
+
 int main()
 {
 	int server_fd;	// socket fd for server
@@ -42,6 +44,76 @@ int main()
 		FD_ZERO(&readfds);
 		FD_SET(server_fd, &readfds);
 		int max_fd = server_fd;
+
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{	
+			int fd = client_sockets[i];
+
+			if (fd > 0)
+			{
+				FD_SET(fd, &readfds);
+			}
+			else break;
+	
+			if (fd > max_fd) max_fd = fd;
+		}
+
+		select(max_fd + 1, &readfds, NULL, NULL, NULL);
+
+		if (FD_ISSET(server_fd, &readfds))
+		{
+			new_client = accept(server_fd, (struct sockaddr *) &address, &addrlen);
+			
+			printf("New connection: socket fd: %d, IP: %s\n", new_client, inet_ntoa(address.sin_addr));
+
+			for (int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if (client_sockets[i] == 0)
+				{
+					client_sockets[i] = new_client;
+					break;
+				}
+			}
+		}
+		else 
+		{
+			perror("Invalid connection\n");
+		}	
+	
+		#ifndef DEBUG
+
+		// reading messages
+		for	(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			int fd = client_sockets[i];	// current client
+
+			if (FD_ISSET(fd, &readfds))
+			{
+				int val = read(fd, buffer, 1024);
+
+				if (val == 0)  // client is disconected
+				{
+					getpeername(fd, (struct sockaddr *) &address, &addrlen);
+					printf("Client disconnected. IP: %s\n", inet_ntoa(address.sin_addr));
+					close(fd);
+					client_sockets[i] = 0;
+				}
+				else
+				{
+					buffer[val] = '\0';
+					
+					for (int j = 0; j < MAX_CLIENTS; j++)
+					{
+						if (client_sockets[j] != 0 && client_sockets[j] != fd)
+						{
+			           		send(client_sockets[j], buffer, strlen(buffer), 0);
+						}
+					}
+				}
+			}
+		}
+
+		#endif
 	}
 
 	return 0;
