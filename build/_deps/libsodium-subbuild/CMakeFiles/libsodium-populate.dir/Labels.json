@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/CMakeFiles/libsodium-populate"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/CMakeFiles/libsodium-populate.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/CMakeFiles/libsodium-populate-complete.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-build.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-configure.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-download.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-install.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-patch.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-test.rule"
+		},
+		{
+			"file" : "/home/user/github/c-chat/build/_deps/libsodium-subbuild/libsodium-populate-prefix/src/libsodium-populate-stamp/libsodium-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"libsodium-populate"
+		],
+		"name" : "libsodium-populate"
+	}
+}
