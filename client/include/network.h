@@ -25,6 +25,6 @@ int recv_all(int socket_fd, void *buf, size_t n);
 int send_all(int socket_fd, const void *buf, size_t n);
 int recv_packet(int client_socket, struct packet_in *packet);
 int send_packet(int client_socket, const struct packet_in *packet);
-void handle_recv_error_message(int error_message);
-	
+void print_recv_error_message(int error_code);
+
 #endif

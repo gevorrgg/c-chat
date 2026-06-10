@@ -50,9 +50,9 @@ void *receive_msg(void *arg)
 
 		if (recv_packet_status != PACKET_RECV_SUCCESS)
 		{
-			handle_recv_error_message(recv_packet_status);
+			print_recv_error_message(recv_packet_status);
 			close(sock);
-			_exit(0);
+			_exit(0); // deadlock if exit(0) used instead
 		}
 
 		unsigned long long msg_len;

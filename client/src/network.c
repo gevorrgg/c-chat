@@ -158,9 +158,9 @@ int send_packet(int client_socket, const struct packet_in *packet)
     return PACKET_SEND_SUCCESS;
 }
 
-void handle_recv_error_message(int error_message)
+void print_recv_error_message(int error_code)
 {
-    switch (error_message)
+    switch (error_code)
     {
         case PACKET_RECV_DISCONNECTED:
             fprintf(stderr, "\nServer is unreachable\n");
