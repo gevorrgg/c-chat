@@ -72,7 +72,7 @@ int main()
 		}	
 
 		// reading messages
-		handle_client_messages((const struct client_in **)clients, MAX_CLIENTS, &readfds, decrypted_buffer, MAX_MESSAGE_SIZE);
+		handle_client_messages((struct client_in **)clients, MAX_CLIENTS, &readfds, decrypted_buffer, MAX_MESSAGE_SIZE);
 	}
 
 	// cleanup

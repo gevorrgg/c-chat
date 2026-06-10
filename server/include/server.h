@@ -20,7 +20,10 @@ typedef enum
     SERVER_CONNECTION_ERR = -2,
     SERVER_MESSAGE_ERR = -3,
     SERVER_SELECT_ERR = -4,
-    SERVER_DISCONNECT = -5
+    SERVER_DISCONNECT = -5,
+    SERVER_ENCRYPTION_FAILED = -6,
+    SERVER_DECRYPTION_FAILED = -7,
+    SERVER_PACKET_RECV_ERR = -8
 } server_status;
 
 void handle_message_errors(client_message_status status);
@@ -32,7 +35,7 @@ int handle_client_message(
     size_t max_message_size);
 
 void wait_for_io_events(fd_set *readfds, int server_fd, struct client_in *clients[], size_t clients_count);
-void handle_client_messages(const struct client_in *clients[], size_t clients_count, fd_set *readfds, uint8_t *message_buffer, size_t max_message_size);
+void handle_client_messages(struct client_in *clients[], size_t clients_count, fd_set *readfds, uint8_t *message_buffer, size_t max_message_size);
 
 
 #endif

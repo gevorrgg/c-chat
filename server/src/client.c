@@ -1,4 +1,5 @@
 #include "../include/client.h"
+#include <string.h>
 
 struct client_in* new_client_in(int socket, uint8_t *rx, uint8_t *tx)
 {

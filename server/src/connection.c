@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 void handle_connection_errors(connection_status status)
 {
@@ -27,6 +28,21 @@ void handle_connection_errors(connection_status status)
         break;
     }
 }
+
+static int insert_client(struct client_in *clients[], size_t clients_count, struct client_in *new_client)
+{
+    for (int i = 0; i < clients_count; i++)
+    {
+        if (clients[i] == NULL)
+        {
+            clients[i] = new_client;
+            return CONNECTION_SUCCESS;
+        }
+    }
+
+    return CONNECTION_INSERTION_ERR;
+}
+
 
 int handle_new_connection(int server_fd, struct client_in *clients[], size_t clients_count)
 {
@@ -50,13 +66,13 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
 
     if (dh_key_exchange_server(new_client_fd, rx, tx) != DH_EXCHANGE_SUCCESS)
     {
-        int client_request_status = htonl(SERVER_KEY_EXCHANGE_ERR);
+        int32_t client_request_status = htonl(SERVER_KEY_EXCHANGE_ERR);
 
-        send_all(new_client_fd, &client_request_status, sizeof(client_request_status));
+        send_all(new_client_fd, &client_request_status, sizeof(int32_t));
 
         client_request_status = htonl(SERVER_DISCONNECT);
 
-        send_all(new_client_fd, &client_request_status, sizeof(client_request_status));
+        send_all(new_client_fd, &client_request_status, sizeof(int32_t));
 
         close(new_client_fd);
 
@@ -66,17 +82,16 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
     struct client_in *new_client = new_client_in(new_client_fd, rx, tx);
 
     printf("Keys are established\n");
-    send_all(new_client_fd, "Keys are established\n", 22);
 
     int insertion_status = insert_client(clients, clients_count, new_client);
 
     if (insertion_status != CONNECTION_SUCCESS)
     {
-        int client_request_status = htonl(SERVER_CONNECTION_ERR);
-        send_all(new_client_fd, &client_request_status, sizeof(client_request_status));
+        int32_t client_request_status = htonl(SERVER_CONNECTION_ERR);
+        send_all(new_client_fd, &client_request_status, sizeof(int32_t));
 
         client_request_status = htonl(SERVER_DISCONNECT);
-        send_all(new_client_fd, &client_request_status, sizeof(client_request_status));
+        send_all(new_client_fd, &client_request_status, sizeof(int32_t));
 
         close(new_client_fd);
         free(new_client);
@@ -85,20 +100,6 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
     }
 
     return CONNECTION_SUCCESS;
-}
-
-static int insert_client(struct client_in *clients[], size_t clients_count, struct client_in *new_client)
-{
-    for (int i = 0; i < clients_count; i++)
-    {
-        if (clients[i] == NULL)
-        {
-            clients[i] = new_client;
-            return CONNECTION_SUCCESS;
-        }
-    }
-
-    return CONNECTION_INSERTION_ERR;
 }
 
 
@@ -117,6 +118,8 @@ void disconnect_all_clients(struct client_in *clients[], size_t clients_count)
     {
         if (clients[i] != NULL)
         {
+            int32_t status = htonl(SERVER_DISCONNECT);
+            send_all(clients[i]->socket, &status, sizeof(int32_t)); // sending disconnect status
             disconnect_client(clients[i]);
             clients[i] = NULL;
         }

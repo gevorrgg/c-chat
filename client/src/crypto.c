@@ -5,26 +5,26 @@
 #include "../include/packet.h"
 #include "../include/network.h"
 
-int dh_key_exchange_server(size_t client_socket_fd, uint8_t *rx, uint8_t *tx)
+int dh_key_exchange_client(size_t client_socket_fd, uint8_t *rx, uint8_t *tx)
 {
-    uint8_t server_pk[crypto_kx_PUBLICKEYBYTES];
-    uint8_t server_sk[crypto_kx_SECRETKEYBYTES];
-
-    crypto_kx_keypair(server_pk, server_sk);
-
-    if (send_all(client_socket_fd, server_pk, crypto_kx_PUBLICKEYBYTES) <= 0) // send public keys
-	{
-		return DH_EXCHANGE_FAILED;
-	}
-
     uint8_t client_pk[crypto_kx_PUBLICKEYBYTES];
+    uint8_t client_sk[crypto_kx_SECRETKEYBYTES];
 
-    if (recv_all(client_socket_fd, client_pk, crypto_kx_PUBLICKEYBYTES) <= 0) // receive client's public keys
+    crypto_kx_keypair(client_pk, client_sk);
+
+    if (send_all(client_socket_fd, client_pk, crypto_kx_PUBLICKEYBYTES) <= 0) // send public keys
 	{
 		return DH_EXCHANGE_FAILED;
 	}
 
-    if (crypto_kx_server_session_keys(rx, tx, server_pk, server_sk, client_pk) != 0)
+    uint8_t server_pk[crypto_kx_PUBLICKEYBYTES];
+
+    if (recv_all(client_socket_fd, server_pk, crypto_kx_PUBLICKEYBYTES) <= 0) // receive server's public keys
+	{
+		return DH_EXCHANGE_FAILED;
+	}
+
+    if (crypto_kx_client_session_keys(rx, tx, client_pk, client_sk, server_pk) != 0)
 	{
 		return DH_EXCHANGE_FAILED;
 	}
@@ -86,3 +86,4 @@ int packet_encrypt(const uint8_t *plaintext, size_t plaintext_len, struct packet
 
 	return PACKET_ENCRYPTION_SUCCESS;
 }
+

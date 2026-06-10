@@ -3,6 +3,12 @@
 
 #include <sodium.h>
 
+typedef enum
+{
+	CLIENT_REQUEST_SUCCESS = 0,
+	CLIENT_DISCONNECTED = -1
+} client_status;
+
 struct client_in
 {
 	int socket;

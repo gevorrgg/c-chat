@@ -1,8 +1,0 @@
-/home/user/github/c-chat/build/CMakeFiles/edit_cache.dir
-/home/user/github/c-chat/build/CMakeFiles/rebuild_cache.dir
-/home/user/github/c-chat/build/client/CMakeFiles/client.dir
-/home/user/github/c-chat/build/client/CMakeFiles/edit_cache.dir
-/home/user/github/c-chat/build/client/CMakeFiles/rebuild_cache.dir
-/home/user/github/c-chat/build/server/CMakeFiles/server.dir
-/home/user/github/c-chat/build/server/CMakeFiles/edit_cache.dir
-/home/user/github/c-chat/build/server/CMakeFiles/rebuild_cache.dir

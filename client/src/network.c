@@ -6,9 +6,7 @@
 #include <arpa/inet.h>
 #include "../include/network.h"
 #include "../include/packet.h"
-#include "../include/client.h"
 #include "../include/crypto.h"
-#include "../include/server.h"
 
 int recv_all(int socket_fd, void *buf, size_t n)
 {
@@ -160,33 +158,17 @@ int send_packet(int client_socket, const struct packet_in *packet)
     return PACKET_SEND_SUCCESS;
 }
 
-
-void send_broadcast(const struct client_in *clients[], size_t clients_count, const uint8_t *message, size_t message_len, int sender_socket_fd)
+void handle_recv_error_message(int error_message)
 {
-    for (int j = 0; j < clients_count; j++)
+    switch (error_message)
     {
-        if (clients[j] == NULL)
-            continue;
-
-        if (clients[j]->socket != sender_socket_fd)
-        {
-            struct packet_in out_packet;
-
-            if (packet_encrypt(message, message_len, &out_packet,
-                               clients[j]->tx) != PACKET_ENCRYPTION_SUCCESS)
-            {
-                fprintf(stderr, "Could not encrypt packet\n");
-                int32_t status = htonl(SERVER_ENCRYPTION_FAILED);
-
-                send_all(clients[j]->socket, &status, sizeof(int32_t)); // sending status
-
-                continue;
-            }
-            
-            int32_t status = htonl(SERVER_REQUEST_SUCCESS);
-
-            send_all(clients[j]->socket, &status, sizeof(int32_t)); // sending status
-            send_packet(clients[j]->socket, &out_packet);
-        }
+        case PACKET_RECV_DISCONNECTED:
+            fprintf(stderr, "\nServer is unreachable\n");
+            break;
+        case PACKET_ENCRYPTION_FAILED:
+            fprintf(stderr, "\nError receiving packet from server\nResync required\nClosing Connection\n");
+            break;
+        default:
+            break;
     }
 }

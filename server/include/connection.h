@@ -13,6 +13,7 @@ typedef enum
     
 } connection_status;
 
+struct client_in;
 
 void handle_connection_errors(connection_status status);
 int handle_new_connection(int server_fd, struct client_in *clients[], size_t clients_count);

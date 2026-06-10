@@ -5,6 +5,7 @@
 #include "../include/packet.h"
 #include "../include/client.h"
 #include <stdio.h>
+#include <arpa/inet.h>
 
 void handle_message_errors(client_message_status status)
 {
@@ -47,10 +48,10 @@ void wait_for_io_events(fd_set *readfds, int server_fd, struct client_in *client
 			if (fd > max_fd) max_fd = fd;
 		}
 
-		select(max_fd + 1, &readfds, NULL, NULL, NULL);
+		select(max_fd + 1, readfds, NULL, NULL, NULL);
 }
 
-void handle_client_messages(const struct client_in *clients[], size_t clients_count, fd_set *readfds,  uint8_t *message_buffer, size_t max_message_size)
+void handle_client_messages( struct client_in *clients[], size_t clients_count, fd_set *readfds,  uint8_t *message_buffer, size_t max_message_size)
 {
     for	(int i = 0; i < clients_count; i++)
     {
@@ -61,14 +62,39 @@ void handle_client_messages(const struct client_in *clients[], size_t clients_co
 
         if (FD_ISSET(fd, readfds)) // ready for read
         {
+            int32_t client_status;
+
+            recv_all(fd, &client_status, sizeof(int32_t)); // reading status
+
+            client_status = ntohl(client_status);
+
+            if (client_status == CLIENT_DISCONNECTED)
+            {
+                disconnect_client(clients[i]);
+                printf("Client with socket fd %d disconnected\n", fd);
+                clients[i] = NULL;
+
+                continue;
+            }
+        
+           
+             // handling message
             int message_status = handle_client_message(
                 (const struct client_in **)clients, 
                 clients_count, 
                 clients[i], 
-                clients[i], 
                 message_buffer, 
                 max_message_size);
 
+            if (message_status == CLIENT_MSG_DISCONNECTED)
+            { 
+                disconnect_client(clients[i]);
+                printf("Client with socket fd %d disconnected\n", fd);
+                clients[i] = NULL;
+
+                continue;
+            }
+            
             if (message_status != CLIENT_MSG_SUCCESS)
             {
                 handle_message_errors(message_status);
@@ -80,7 +106,6 @@ void handle_client_messages(const struct client_in *clients[], size_t clients_co
 int handle_client_message(
     const struct client_in *clients[], 
     size_t clients_count, 
-    const struct client_in *sender,
     const struct client_in *client, 
     uint8_t *message, 
     size_t max_message_size
@@ -88,10 +113,18 @@ int handle_client_message(
 {
     struct packet_in packet;
 
-    if (recv_packet(client->socket, &packet) ==
-        PACKET_RECV_ERR) // client is disconected
+    int packet_recv_status = recv_packet(client->socket, &packet);
+
+    if (packet_recv_status == PACKET_RECV_ERR) // client is disconected
     {
+        int32_t status = htonl(SERVER_PACKET_RECV_ERR);
+        send_all(client->socket, &status, sizeof(int32_t)); // sending status
+
         return CLIENT_MSG_RECV_ERR;
+    }
+    else if (packet_recv_status == PACKET_RECV_DISCONNECTED)
+    {
+        return CLIENT_MSG_DISCONNECTED;
     }
 
     // decrypting
@@ -100,13 +133,16 @@ int handle_client_message(
     if (packet_decrypt(&packet, message, &msg_len, client->rx) ==
         CLIENT_MSG_DECRYPTION_FAILED)
     {
+        int32_t status = htonl(SERVER_DECRYPTION_FAILED);
+        send_all(client->socket, &status, sizeof(int32_t)); // sending status
+
         return CLIENT_MSG_DECRYPTION_FAILED;
     }
 
     if (msg_len > max_message_size)
     {
-        const char *client_err_msg = "Message is too large\n";
-        send_all(client->socket, client_err_msg, strlen(client_err_msg));
+        int32_t status = htonl(SERVER_MESSAGE_ERR);
+        send_all(client->socket, &status, sizeof(int32_t)); // sending status
 
         return CLIENT_MSG_TOO_LARGE;
     }

@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sys/types.h>
 
 typedef enum
 {
@@ -26,6 +25,6 @@ int recv_all(int socket_fd, void *buf, size_t n);
 int send_all(int socket_fd, const void *buf, size_t n);
 int recv_packet(int client_socket, struct packet_in *packet);
 int send_packet(int client_socket, const struct packet_in *packet);
-void send_broadcast(const struct client_in *clients[], size_t clients_count, const uint8_t *message, size_t message_len, int sender_socket_fd);
-
+void handle_recv_error_message(int error_message);
+	
 #endif
