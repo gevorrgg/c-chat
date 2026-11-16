@@ -18,6 +18,13 @@ X25519 key exchange.
   (see [docs/PROTOCOL.md](docs/PROTOCOL.md))
 - Broadcast: a message from one client is re-encrypted and delivered to every
   other connected client
+- Address and port configurable from the command line, with sensible defaults
+- Tampered or undecryptable packets are rejected and reported to the sender
+  instead of being relayed
+- Clean disconnect handling on both sides: closed sockets are detected, slots
+  are freed, Ctrl-D ends the client without spurious errors
+- One-command cross-platform build (`build.sh` / `build.bat`) that fetches
+  libsodium and installs missing tools
 
 ---
 
@@ -62,7 +69,7 @@ eavesdropping but not against an active man-in-the-middle.
 ├── docs/
 │   └── PROTOCOL.md         # wire format, handshake and status codes
 ├── client/
-│   ├── main.c              # entry point: connect, key exchange, input loop, receiver thread
+│   ├── main.c              # entry point: CLI args, connect, key exchange, input loop, receiver thread
 │   ├── include/
 │   │   ├── packet.h        # struct packet_in and size limits
 │   │   ├── network.h       # recv_all/send_all, recv_packet/send_packet
@@ -73,7 +80,7 @@ eavesdropping but not against an active man-in-the-middle.
 │       ├── crypto.c
 │       └── server_errors.c
 └── server/
-    ├── main.c              # entry point: listen + select() loop
+    ├── main.c              # entry point: CLI args, listen + select() loop
     ├── include/
     │   ├── packet.h        # same wire format as the client
     │   ├── network.h       # socket helpers + send_broadcast()
@@ -151,8 +158,18 @@ Start the server, then one or more clients in separate terminals:
 ./build/client/client [server_ip] [port]
 ```
 
-Both arguments are optional. Defaults: the server listens on all interfaces
-on port 8080, the client connects to `127.0.0.1:8080`.
+Both arguments are optional and positional.
+
+| program | argument    | meaning                              | default      |
+|---------|-------------|--------------------------------------|--------------|
+| server  | `port`      | TCP port to listen on                | `8080`       |
+| server  | `bind_ip`   | IPv4 address to listen on            | `0.0.0.0`    |
+| client  | `server_ip` | IPv4 address of the server           | `127.0.0.1`  |
+| client  | `port`      | TCP port of the server               | `8080`       |
+
+Ports must be in `1..65535`, addresses must be IPv4 literals (hostnames are
+not resolved). Invalid values print a usage message and exit with status 1,
+as does a failed `connect()` or `bind()`.
 
 ```bash
 ./build/server/server                  # 0.0.0.0:8080
@@ -168,6 +185,10 @@ Type a line and press Enter to send it. Every other connected client prints it
 as `Received: <text>`. Stop a client with Ctrl-C or Ctrl-D; the server notices
 the closed socket and frees the slot.
 
+When the server goes away, clients print `Server is unreachable` and exit.
+Server-side problems with a specific message (too large, failed to decrypt)
+are reported back to the sending client as an error line.
+
 The maximum number of clients (`MAX_CLIENTS`, 10) is compiled into
 [server/main.c](server/main.c).
 
@@ -181,4 +202,7 @@ The maximum number of clients (`MAX_CLIENTS`, 10) is compiled into
 - No usernames, rooms or history. Every connected client sees every message.
 - The server processes the key exchange synchronously, so a client that
   connects and stalls blocks the event loop until it answers or disconnects.
-- Everything is IPv4 only.
+- Everything is IPv4 only, and addresses must be given as literals, not
+  hostnames.
+- The server is single-threaded: `MAX_CLIENTS` is a hard cap and a blocked
+  `send()` to one client stalls delivery to the others.
