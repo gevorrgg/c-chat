@@ -2,6 +2,7 @@
 #define CRYPTO_H
 
 #include <sodium.h>
+#include <stdint.h>
 
 typedef enum
 {

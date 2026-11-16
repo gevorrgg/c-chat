@@ -35,22 +35,36 @@
 
 ## Dependencies
 
-- C11 compiler (gcc/clang)
-- pthread
-- libsodium
+- C11 compiler (gcc/clang/MSVC)
+- CMake 3.16+ and git
+- pthread (POSIX)
+
+libsodium is downloaded and built by CMake automatically via FetchContent,
+no manual installation is needed. The build scripts also install `cmake`
+and `git` if they are missing (Homebrew on macOS, apt/dnf/yum/pacman/zypper/apk
+on Linux, winget on Windows).
 
 ## Build
-### Client
+
+Use the build script for your platform. It configures CMake, fetches
+libsodium and builds both `client` and `server` into `./build`.
+
+macOS / Linux:
 ```bash
-mkdir build
-cd build
-cmake ..
-cmake --build . --target client
+./build.sh            # Debug
+./build.sh release    # Release
+./build.sh clean      # wipe ./build and rebuild
 ```
 
-### Server
+Windows:
+```bat
+build                 # Debug
+build release         # Release
+build clean           # wipe .\build and rebuild
+```
+
+Or manually:
 ```bash
-mkdir build
-cd build
-cmake ..
-cmake --build . --target build
+cmake -S . -B build
+cmake --build build
+```

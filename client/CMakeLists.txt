@@ -11,7 +11,6 @@ add_executable(client
    src/network.c
    src/server_errors.c)
 
-target_include_directories(client PRIVATE ${sodium_INCLUDE_DIRS})
 target_link_libraries(client PRIVATE sodium)
 
 

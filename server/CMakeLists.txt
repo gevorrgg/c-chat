@@ -13,7 +13,6 @@ add_executable(server
     src/crypto.c 
     src/network.c)
 
-target_include_directories(server PRIVATE ${sodium_INCLUDE_DIRS})
 target_link_libraries(server PRIVATE sodium)
 
 
