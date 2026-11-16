@@ -23,8 +23,8 @@ X25519 key exchange.
   instead of being relayed
 - Clean disconnect handling on both sides: closed sockets are detected, slots
   are freed, Ctrl-D ends the client without spurious errors
-- One-command cross-platform build (`build.sh` / `build.bat`) that fetches
-  libsodium and installs missing tools
+- One-command build (`build.sh`) that fetches libsodium and installs
+  missing tools
 
 ---
 
@@ -65,7 +65,7 @@ eavesdropping but not against an active man-in-the-middle.
 ```
 .
 ├── CMakeLists.txt          # top-level build, fetches libsodium via FetchContent
-├── build.sh / build.bat    # one-shot build scripts (install cmake/git if missing)
+├── build.sh                # one-shot build script (installs cmake/git if missing)
 ├── docs/
 │   └── PROTOCOL.md         # wire format, handshake and status codes
 ├── client/
@@ -108,34 +108,29 @@ a browsable API reference.
 
 ## Dependencies
 
-- C11 compiler (gcc/clang/MSVC)
+- C11 compiler (gcc/clang)
 - CMake 3.16+ and git
-- POSIX sockets and pthread (Linux, macOS, WSL; the server also needs `select()`)
+- POSIX sockets, `select()` and pthread
+
+Supported platforms are Linux and macOS. The code uses POSIX networking
+APIs directly, so it does not build natively on Windows; use WSL there.
 
 libsodium is downloaded and built by CMake automatically via FetchContent,
-no manual installation is needed. The build scripts also install `cmake`
+no manual installation is needed. The build script also installs `cmake`
 and `git` if they are missing (Homebrew on macOS, apt/dnf/yum/pacman/zypper/apk
-on Linux, winget on Windows).
+on Linux).
 
 ---
 
 ## Build
 
-Use the build script for your platform. It configures CMake, fetches
-libsodium and builds both `client` and `server` into `./build`.
+The build script configures CMake, fetches libsodium and builds both
+`client` and `server` into `./build` (on Windows, run it inside WSL):
 
-macOS / Linux:
 ```bash
 ./build.sh            # Debug
 ./build.sh release    # Release
 ./build.sh clean      # wipe ./build and rebuild
-```
-
-Windows:
-```bat
-build                 # Debug
-build release         # Release
-build clean           # wipe .\build and rebuild
 ```
 
 Or manually:
