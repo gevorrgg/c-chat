@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+ * Maps a SERVER_* status word to a message on stderr. Success and unknown
+ * codes are silent so the caller can call this unconditionally.
+ */
 void handle_server_message_errors(server_status status)
 {
     switch (status)

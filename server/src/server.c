@@ -28,6 +28,10 @@ void handle_message_errors(client_message_status status)
     }
 }
 
+/*
+ * Rebuilds the fd_set from scratch on every call because select() modifies
+ * it in place. max_fd is tracked for select()'s first argument.
+ */
 void wait_for_io_events(fd_set *readfds, int server_fd, struct client_in *clients[], size_t clients_count)
 {
    		FD_ZERO(readfds);
@@ -48,9 +52,16 @@ void wait_for_io_events(fd_set *readfds, int server_fd, struct client_in *client
 			if (fd > max_fd) max_fd = fd;
 		}
 
+		// NULL timeout: block until at least one descriptor is readable
 		select(max_fd + 1, readfds, NULL, NULL, NULL);
 }
 
+/*
+ * Walks the client table once and services every socket that select()
+ * marked readable. Each readable client yields exactly one status word plus
+ * (if the status is a success) one packet; remaining data stays in the
+ * socket buffer and is picked up on the next loop iteration.
+ */
 void handle_client_messages( struct client_in *clients[], size_t clients_count, fd_set *readfds,  uint8_t *message_buffer, size_t max_message_size)
 {
     for	(int i = 0; i < clients_count; i++)
@@ -64,10 +75,20 @@ void handle_client_messages( struct client_in *clients[], size_t clients_count, 
         {
             int32_t client_status;
 
-            recv_all(fd, &client_status, sizeof(int32_t)); // reading status
+            // reading status; 0 means the client closed the socket
+            if (recv_all(fd, &client_status, sizeof(int32_t)) <= 0)
+            {
+                disconnect_client(clients[i]);
+                printf("Client with socket fd %d disconnected\n", fd);
+                clients[i] = NULL;
+
+                continue;
+            }
 
             client_status = ntohl(client_status);
 
+            // explicit goodbye from the client (not sent by the current client,
+            // but handled for forward compatibility)
             if (client_status == CLIENT_DISCONNECTED)
             {
                 disconnect_client(clients[i]);
@@ -86,6 +107,7 @@ void handle_client_messages( struct client_in *clients[], size_t clients_count, 
                 message_buffer, 
                 max_message_size);
 
+            // recv() returned 0 somewhere inside: the socket is closed
             if (message_status == CLIENT_MSG_DISCONNECTED)
             { 
                 disconnect_client(clients[i]);
@@ -103,6 +125,11 @@ void handle_client_messages( struct client_in *clients[], size_t clients_count, 
     }
 }
 
+/*
+ * Processes one message from `client`: receive -> decrypt -> size check ->
+ * broadcast. Each failure path reports back to the sender with the matching
+ * SERVER_* status word so the client can show an error.
+ */
 int handle_client_message(
     const struct client_in *clients[], 
     size_t clients_count, 
@@ -115,7 +142,7 @@ int handle_client_message(
 
     int packet_recv_status = recv_packet(client->socket, &packet);
 
-    if (packet_recv_status == PACKET_RECV_ERR) // client is disconected
+    if (packet_recv_status == PACKET_RECV_ERR) // socket error or bad length field
     {
         int32_t status = htonl(SERVER_PACKET_RECV_ERR);
         send_all(client->socket, &status, sizeof(int32_t)); // sending status
@@ -131,7 +158,7 @@ int handle_client_message(
     unsigned long long msg_len;
 
     if (packet_decrypt(&packet, message, &msg_len, client->rx) ==
-        CLIENT_MSG_DECRYPTION_FAILED)
+        PACKET_DECRYPTION_FAILED)
     {
         int32_t status = htonl(SERVER_DECRYPTION_FAILED);
         send_all(client->socket, &status, sizeof(int32_t)); // sending status

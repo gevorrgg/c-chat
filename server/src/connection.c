@@ -29,6 +29,7 @@ void handle_connection_errors(connection_status status)
     }
 }
 
+/* Store the client in the first free (NULL) slot of the table. */
 static int insert_client(struct client_in *clients[], size_t clients_count, struct client_in *new_client)
 {
     for (int i = 0; i < clients_count; i++)
@@ -44,6 +45,16 @@ static int insert_client(struct client_in *clients[], size_t clients_count, stru
 }
 
 
+/*
+ * Full life cycle of accepting one client:
+ *   accept() -> key exchange -> allocate client_in -> insert into table.
+ * Every failure after accept() tells the client why (SERVER_* status word,
+ * then SERVER_DISCONNECT) before the socket is closed, so the client can
+ * print a meaningful error instead of a bare "connection reset".
+ *
+ * Note that the key exchange blocks the whole server until this client
+ * answers; a slow or stalled client delays everyone else.
+ */
 int handle_new_connection(int server_fd, struct client_in *clients[], size_t clients_count)
 {
     struct sockaddr_in address;
@@ -66,6 +77,7 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
 
     if (dh_key_exchange_server(new_client_fd, rx, tx) != DH_EXCHANGE_SUCCESS)
     {
+        // tell the client what went wrong, then announce the disconnect
         int32_t client_request_status = htonl(SERVER_KEY_EXCHANGE_ERR);
 
         send_all(new_client_fd, &client_request_status, sizeof(int32_t));
@@ -87,6 +99,7 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
 
     if (insertion_status != CONNECTION_SUCCESS)
     {
+        // table is full (MAX_CLIENTS reached): reject politely
         int32_t client_request_status = htonl(SERVER_CONNECTION_ERR);
         send_all(new_client_fd, &client_request_status, sizeof(int32_t));
 
@@ -103,6 +116,7 @@ int handle_new_connection(int server_fd, struct client_in *clients[], size_t cli
 }
 
 
+/* Release one client. The table slot itself is cleared by the caller. */
 void disconnect_client(struct client_in *client)
 {
     if (client)
@@ -112,6 +126,7 @@ void disconnect_client(struct client_in *client)
     }
 }
 
+/* Shutdown path: warn every client with SERVER_DISCONNECT, then free them. */
 void disconnect_all_clients(struct client_in *clients[], size_t clients_count)
 {
     for (int i = 0; i < clients_count; i++)
