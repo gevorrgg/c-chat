@@ -138,11 +138,29 @@ static int parse_port(const char *text)
 	return (int)value;
 }
 
-static void print_usage(const char *prog)
+static void print_usage(FILE *out, const char *prog)
 {
-	fprintf(stderr, "Usage: %s [server_ip] [port]\n", prog);
-	fprintf(stderr, "  server_ip  IPv4 address of the server (default %s)\n", DEFAULT_SERVER_IP);
-	fprintf(stderr, "  port       TCP port of the server (default %d)\n", DEFAULT_PORT);
+	fprintf(out, "Usage: %s [server_ip] [port]\n", prog);
+	fprintf(out, "       %s --help\n", prog);
+	fprintf(out, "\n");
+	fprintf(out, "Connect to a c-chat server and exchange encrypted messages.\n");
+	fprintf(out, "\n");
+	fprintf(out, "Arguments:\n");
+	fprintf(out, "  server_ip   IPv4 address of the server (default %s)\n", DEFAULT_SERVER_IP);
+	fprintf(out, "  port        TCP port of the server, 1-65535 (default %d)\n", DEFAULT_PORT);
+	fprintf(out, "\n");
+	fprintf(out, "Options:\n");
+	fprintf(out, "  -h, --help  show this help and exit\n");
+}
+
+/* Print an error, then the usage text, and return the exit code for main(). */
+static int usage_error(const char *prog, const char *fmt, const char *arg)
+{
+	fprintf(stderr, "Error: ");
+	fprintf(stderr, fmt, arg);
+	fprintf(stderr, "\n\n");
+	print_usage(stderr, prog);
+	return 1;
 }
 
 int main(int argc, char *argv[])
@@ -150,16 +168,40 @@ int main(int argc, char *argv[])
 	// command line: [server_ip] [port]; both optional, defaults above
 	const char *server_ip = DEFAULT_SERVER_IP;
 	int port = DEFAULT_PORT;
+	struct in_addr server_addr;
+
+	// --help / -h anywhere on the command line wins over everything else
+	for (int i = 1; i < argc; i++)
+	{
+		if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
+		{
+			print_usage(stdout, argv[0]);
+			return 0;
+		}
+	}
 
 	if (argc > 3)
 	{
-		print_usage(argv[0]);
-		return 1;
+		return usage_error(argv[0], "too many arguments (expected at most 2)%s", "");
+	}
+
+	// any other option-looking argument is unknown
+	for (int i = 1; i < argc; i++)
+	{
+		if (argv[i][0] == '-')
+		{
+			return usage_error(argv[0], "unknown option '%s'", argv[i]);
+		}
 	}
 
 	if (argc >= 2)
 	{
 		server_ip = argv[1];
+	}
+
+	if (inet_pton(AF_INET, server_ip, &server_addr) != 1)
+	{
+		return usage_error(argv[0], "invalid IPv4 address '%s'", server_ip);
 	}
 
 	if (argc == 3)
@@ -168,9 +210,7 @@ int main(int argc, char *argv[])
 
 		if (port < 0)
 		{
-			fprintf(stderr, "Invalid port: %s\n", argv[2]);
-			print_usage(argv[0]);
-			return 1;
+			return usage_error(argv[0], "invalid port '%s' (expected a number 1-65535)", argv[2]);
 		}
 	}
 
@@ -197,14 +237,7 @@ int main(int argc, char *argv[])
 		
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(port);
-
-	if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) != 1)
-	{
-		fprintf(stderr, "Invalid IPv4 address: %s\n", server_ip);
-		print_usage(argv[0]);
-		close(sock);
-		return 1;
-	}
+	serv_addr.sin_addr = server_addr; // validated above
 	
 	if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
 	{

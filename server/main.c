@@ -51,11 +51,31 @@ static int parse_port(const char *text)
 	return (int)value;
 }
 
-static void print_usage(const char *prog)
+static void print_usage(FILE *out, const char *prog)
 {
-	fprintf(stderr, "Usage: %s [port] [bind_ip]\n", prog);
-	fprintf(stderr, "  port     TCP port to listen on (default %d)\n", DEFAULT_PORT);
-	fprintf(stderr, "  bind_ip  IPv4 address to listen on (default 0.0.0.0, all interfaces)\n");
+	fprintf(out, "Usage: %s [port] [bind_ip]\n", prog);
+	fprintf(out, "       %s --help\n", prog);
+	fprintf(out, "\n");
+	fprintf(out, "Run a c-chat server that relays encrypted messages between clients.\n");
+	fprintf(out, "\n");
+	fprintf(out, "Arguments:\n");
+	fprintf(out, "  port        TCP port to listen on, 1-65535 (default %d)\n", DEFAULT_PORT);
+	fprintf(out, "  bind_ip     IPv4 address to listen on (default 0.0.0.0, all interfaces)\n");
+	fprintf(out, "\n");
+	fprintf(out, "Options:\n");
+	fprintf(out, "  -h, --help  show this help and exit\n");
+	fprintf(out, "\n");
+	fprintf(out, "Up to %d clients are served at the same time.\n", MAX_CLIENTS);
+}
+
+/* Print an error, then the usage text, and return the exit code for main(). */
+static int usage_error(const char *prog, const char *fmt, const char *arg)
+{
+	fprintf(stderr, "Error: ");
+	fprintf(stderr, fmt, arg);
+	fprintf(stderr, "\n\n");
+	print_usage(stderr, prog);
+	return 1;
 }
 
 int main(int argc, char *argv[])
@@ -63,11 +83,30 @@ int main(int argc, char *argv[])
 	// command line: [port] [bind_ip]; both optional
 	int port = DEFAULT_PORT;
 	const char *bind_ip = NULL; // NULL = INADDR_ANY
+	struct in_addr bind_addr;
+
+	// --help / -h anywhere on the command line wins over everything else
+	for (int i = 1; i < argc; i++)
+	{
+		if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
+		{
+			print_usage(stdout, argv[0]);
+			return 0;
+		}
+	}
 
 	if (argc > 3)
 	{
-		print_usage(argv[0]);
-		return 1;
+		return usage_error(argv[0], "too many arguments (expected at most 2)%s", "");
+	}
+
+	// any other option-looking argument is unknown
+	for (int i = 1; i < argc; i++)
+	{
+		if (argv[i][0] == '-')
+		{
+			return usage_error(argv[0], "unknown option '%s'", argv[i]);
+		}
 	}
 
 	if (argc >= 2)
@@ -76,15 +115,18 @@ int main(int argc, char *argv[])
 
 		if (port < 0)
 		{
-			fprintf(stderr, "Invalid port: %s\n", argv[1]);
-			print_usage(argv[0]);
-			return 1;
+			return usage_error(argv[0], "invalid port '%s' (expected a number 1-65535)", argv[1]);
 		}
 	}
 
 	if (argc == 3)
 	{
 		bind_ip = argv[2];
+
+		if (inet_pton(AF_INET, bind_ip, &bind_addr) != 1)
+		{
+			return usage_error(argv[0], "invalid IPv4 address '%s'", bind_ip);
+		}
 	}
 
 	// must be called before any other libsodium function
@@ -121,12 +163,9 @@ int main(int argc, char *argv[])
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(port);
 
-	if (bind_ip && inet_pton(AF_INET, bind_ip, &address.sin_addr) != 1)
+	if (bind_ip)
 	{
-		fprintf(stderr, "Invalid IPv4 address: %s\n", bind_ip);
-		print_usage(argv[0]);
-		close(server_fd);
-		return 1;
+		address.sin_addr = bind_addr; // validated above
 	}
 
 	if (bind(server_fd, (struct sockaddr *) &address, sizeof(address)) < 0)

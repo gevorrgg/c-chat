@@ -163,8 +163,10 @@ Both arguments are optional and positional.
 | client  | `port`      | TCP port of the server               | `8080`       |
 
 Ports must be in `1..65535`, addresses must be IPv4 literals (hostnames are
-not resolved). Invalid values print a usage message and exit with status 1,
-as does a failed `connect()` or `bind()`.
+not resolved). `--help` or `-h` prints the usage text and exits with status 0.
+Any other mistake (unknown option, too many arguments, invalid port or
+address) prints the reason followed by the usage text and exits with
+status 1, as does a failed `connect()` or `bind()`.
 
 ```bash
 ./build/server/server                  # 0.0.0.0:8080
